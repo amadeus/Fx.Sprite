@@ -1,6 +1,6 @@
 (function(){
 
-var key = (function(){
+var spriteKey = (function(){
 	var list = ['', 'webkit', 'Moz', 'O', 'ms'],
 		element = document.html;
 
@@ -14,9 +14,9 @@ var key = (function(){
 	return 'left';
 })(),
 
-value = (function(){
-	if (key === 'webkitTransform' || key === 'transform') return 'translate3d(-{pos}px, 0, 0)';
-	if (key === 'left') return '-{pos}px';
+spriteValue = (function(){
+	if (spriteKey === 'webkitTransform' || spriteKey === 'transform') return 'translate3d(-{pos}px, 0, 0)';
+	if (spriteKey === 'left') return '-{pos}px';
 	else return 'translateX(-{pos}px)';
 })();
 
@@ -40,6 +40,7 @@ var Sprite = Fx.Sprite = new Class({
 	initialize: function(sprite, options){
 		this.sprite = typeOf(sprite) === 'string' ? new Element('img', { src: sprite }) : document.id(sprite);
 		this.setOptions(options);
+		this.options.frameStep = (this.options.frameStep) ? this.options.frameStep : this.options.width / this.options.frames;
 
 		this.sprite.setStyles({
 			width: this.options.width,
@@ -49,38 +50,47 @@ var Sprite = Fx.Sprite = new Class({
 			left: 0
 		});
 
-		this.frameStep = this.options.width / this.options.frames;
-
-		this.spriteFrame = new Element('div', {
+		this.subject = new Element('div', {
 			styles: {
 				position: 'relative',
-				width: this.frameStep,
+				width: this.options.frameStep,
 				height: this.options.height,
 				overflow: 'hidden'
 			}
 		}).adopt(this.sprite);
 
-		if (this.options.container) this.spriteFrame.inject(document.id(this.options.container));
+		if (this.options.container) this.subject.inject(document.id(this.options.container));
+	},
+
+	step: function(){
+		this.setFrame(this.frame + 1);
+		if (this.isRunning()) this.fireEvent('step', [this.frame, this.subject]);
+		return this;
 	},
 
 	setFrame: function(frameIndex){
-		if (frameIndex >= this.options.frames) frameIndex = 0
+		// Manage looping
+		if (frameIndex >= this.options.frames) {
+			if (!this.options.loop) return this.stop();
+			frameIndex = 0;
+			this.fireEvent('iterate', [frameIndex, this.subject]);
+		}
+
 		this.frame = frameIndex;
-		var o = { pos: this.frame * this.frameStep };
-		this.sprite.setStyle(key, value.substitute(o));
+		var o = { pos: this.frame * this.options.frameStep };
+		this.sprite.setStyle(spriteKey, spriteValue.substitute(o));
+
+		return this;
 	},
 
 	stop: function(){
 		this.parent();
 		this.setFrame(0);
-	},
-
-	step: function(){
-		this.setFrame(this.frame + 1);
+		return this;
 	},
 
 	toElement: function(){
-		return this.spriteFrame;
+		return this.subject;
 	}
 });
 
